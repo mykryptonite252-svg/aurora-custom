@@ -1,0 +1,24 @@
+# IOMMU / Intel VT-d
+#
+# Found DISABLED on the live system: /sys/class/iommu was empty and
+# /sys/kernel/iommu_groups contained 0 groups, despite the firmware exposing
+# VT-d (ACPI DMAR table present, two DMAR units enumerated by the kernel at
+# fed90000 and fed91000). Nothing on the kernel cmdline enabled it.
+#
+# Why it matters on this machine specifically:
+#
+#   * Thunderbolt DMA. The TB3 controller (JHL6340) is present and its
+#     security level is "user" — approval-based. Approval is a policy gate,
+#     not a hardware one: without an IOMMU an approved or spoofed device has
+#     unrestricted DMA to system memory. This is the evil-maid path.
+#
+#   * VM device passthrough. Isolating a NIC or USB controller inside a VM
+#     requires IOMMU groups. With zero groups it is simply not possible.
+#
+# iommu=pt (passthrough) means devices that do not need address translation
+# bypass it entirely, so there is no throughput cost on normal I/O — the
+# protection applies where it is actually needed.
+#
+# Note on risk: NVIDIA + VT-d had real problems historically, but those were
+# pre-450 drivers. This system runs 610.43.03 (open), where VT-d is routine.
+kargs = ["intel_iommu=on", "iommu=pt"]
