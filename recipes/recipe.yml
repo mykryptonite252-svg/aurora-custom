@@ -133,6 +133,49 @@ modules:
         # ── Legacy document converters ────────────────────────────────
         - antiword
         - catdoc
+        # ── Samba / SMB (server side too — closes LAN file sharing) ───
+        - samba
+        - samba-client
+        - samba-client-libs
+        - samba-common
+        - samba-common-tools
+        - samba-core-libs
+        - samba-dcerpc
+        - samba-ldb-ldap-modules
+        - samba-libs
+        - samba-ndr-libs
+        - samba-usershares
+        - samba-winbind
+        - samba-winbind-clients
+        - samba-winbind-modules
+        - kdenetwork-filesharing
+        # ── Network discovery (broadcasts this host, enumerates others) ─
+        # Avahi was already denied to Brave over D-Bus by an earlier
+        # hardening pass; removing the package entirely is the stronger
+        # version of the same decision.
+        - avahi
+        - avahi-glib
+        - avahi-gobject
+        - avahi-libs
+        - avahi-tools
+        - kdsoap-ws-discovery-client
+        # ── Geolocation (also already denied over D-Bus) ──────────────
+        - geoclue2
+        # ── Online account sign-in (Google/Nextcloud/etc) ─────────────
+        - kaccounts-integration-qt6
+        - kaccounts-providers
+        # ── File content indexer ──────────────────────────────────────
+        # Baloo indexes the content of every file it can read. Removed for
+        # both privacy and background I/O. Cost: no KDE file-content
+        # search — use locate/find or per-app search instead.
+        - kf6-baloo
+        - kf6-baloo-file
+        - kf6-baloo-libs
+        - baloo-widgets
+        # ── Dead weight ───────────────────────────────────────────────
+        - plasma-desktop-doc
+        - kdegraphics-mobipocket
+        - plasma-workspace-wallpapers
 
 
   - type: default-flatpaks
