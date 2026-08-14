@@ -3,21 +3,30 @@
 # Flatpak's sandbox, and hardware-accelerated video calls are a hard
 # requirement. Repo/key URLs verified live (HTTP 200) against Brave's own
 # S3-hosted RPM repo.
+#
+# NOTE ON `COPY`: do not use it here. BlueBuild inlines every containerfile
+# into one generated Containerfile at the repo root, so a bare
+# `COPY policies.json` resolves against the build-context ROOT, not this
+# directory — it fails with "/policies.json: not found". The policy file is
+# instead staged into the image by the `files` module (module 1) at
+# /usr/share/aurora-custom/ and installed from there below, which also
+# guarantees it lands AFTER the package install rather than before it.
 
 RUN rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc && \
     curl -fsSLo /etc/yum.repos.d/brave-browser.repo \
       https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo && \
-    rpm-ostree install brave-browser
+    rpm-ostree install brave-browser && \
+    install -Dm644 /usr/share/aurora-custom/brave-policies.json \
+      /etc/brave/policies/managed/policies.json
 
-# Managed policy — replaces what the Flatpak sandbox override used to deny
-# (GeoClue/Avahi/notifications) since a native install has no bwrap layer
-# to deny them at. Chromium merges every file under managed/, so this can
-# safely be its own file rather than needing to land last.
-COPY policies.json /etc/brave/policies/managed/policies.json
+# Managed policy replaces what the Flatpak sandbox override used to deny
+# (GeoClue/Avahi/notifications) — a native install has no bwrap layer to
+# deny them at. Chromium merges every file under managed/, so this coexists
+# with anything Brave's own package ships there.
 
 # Verify after rebase + reboot:
 #   rpm -q brave-browser
-#   brave://policy -> confirm all policies loaded, no "Unknown policy" entries
+#   brave://policy -> confirm policies loaded, no "Unknown policy" entries
 #   brave://extensions -> confirm all 4 force-installed extensions present
 #   brave://gpu -> confirm Video Encode/Decode both "Hardware accelerated"
-#     (needs ~/.config/brave-flags.conf applied per-user; not bakeable)
+#     (needs ~/.config/brave-flags.conf, applied per-user; not bakeable)

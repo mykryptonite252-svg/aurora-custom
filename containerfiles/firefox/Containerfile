@@ -2,29 +2,41 @@
 # table marks Flatpak Firefox as broken (not just discouraged) — native is
 # the only supported path here, not a fallback taken for consistency with
 # Brave. COPR project and phoenix package both verified live (HTTP 200).
+#
+# NOTE ON `COPY`: not used here, for the same build-context reason
+# documented in containerfiles/brave/Containerfile. The policy file is
+# staged by the `files` module at /usr/share/aurora-custom/ and installed
+# below.
+#
+# The install ORDER below is the whole point: Firefox reads exactly ONE
+# policies.json with no managed-directory merge (unlike Chromium), so this
+# must overwrite whatever the phoenix package places at that path. Chaining
+# it into the same RUN after rpm-ostree guarantees that, where the generic
+# `files` module could not — that module runs first, before any package
+# install, and phoenix would clobber it.
 
 RUN dnf copr enable -y celenity/copr && \
     dnf makecache && \
-    rpm-ostree install firefox phoenix
+    rpm-ostree install firefox phoenix && \
+    install -Dm644 /usr/share/aurora-custom/firefox-policies.json \
+      /etc/firefox/policies/policies.json
 
-# Firefox reads exactly ONE policies.json, no managed-directory merge like
-# Chromium gets — this COPY must come after the install line above so it
-# overwrites whatever the phoenix package itself places at this path, not
-# the other way around. Content is Phoenix's own phoenix-core.json plus a
-# 3-URL Extensions.Install (uBlock Origin, Consent-O-Matic, NordPass) —
-# uBlock matters here specifically because Firefox has no Shields
-# equivalent, unlike the Brave build where it'd be redundant.
-COPY policies.json /etc/firefox/policies/policies.json
+# Policy content is Phoenix's own phoenix-core.json plus a 3-URL
+# Extensions.Install (uBlock Origin, Consent-O-Matic, NordPass). uBlock
+# matters here specifically because Firefox has no Shields equivalent —
+# unlike the Brave build, where it would be redundant.
 
-# NOT bakeable — the profile directory doesn't exist until first native
-# launch. After rebase + reboot + first Firefox launch, manually append
-# this same directory's supplemental-user.js to the new profile's user.js
-# (webcam 4K default, hardware decode/encode, WebRTC leak mitigation,
-# Phoenix Extended tier switch via browser.phoenix.extended).
+# NOT bakeable: profile prefs. The profile directory doesn't exist until
+# first native launch, so /usr/share/aurora-custom/firefox-supplemental-user.js
+# ships in the image for you to apply by hand after the first launch:
+#   cp /usr/share/aurora-custom/firefox-supplemental-user.js \
+#      ~/.mozilla/firefox/<profile>/user.js
+# It carries the webcam 4K default, hardware decode/encode, WebRTC leak
+# mitigation, and the Phoenix Extended tier switch (browser.phoenix.extended).
 
 # Verify after rebase + reboot:
 #   rpm -q firefox phoenix
-#   about:config -> confirm browser.phoenix.extended = true (after user.js applied)
-#   about:support -> Media section -> confirm hardware decode is active
+#   about:config -> browser.phoenix.extended = true (after user.js applied)
+#   about:support -> Media -> confirm hardware decode is active
 #   about:addons -> confirm all 3 extensions installed (a dead XPI URL fails
 #     silently — actually check, don't assume)
