@@ -190,10 +190,9 @@ modules:
         scope: system
         install:
           # Browsers
-          # Brave and Firefox deliberately NOT shipped — being reinstalled
-          # fresh by choice. Chrome kept as a day-one fallback so the image
-          # isn't browserless before Bazaar is used to add anything else.
-          - com.google.Chrome
+          # Brave, Firefox and Chrome all deliberately NOT shipped. Image is
+          # browserless on first boot by choice — use Bazaar to install
+          # whatever is chosen next.
           # Security / privacy
           # KeePassXC -> Keyguard: KeePassXC's vault (a single .kdbx binary
           # blob) had repeated corruption. Keyguard stores each entry
@@ -218,12 +217,19 @@ modules:
           # Bazaar is the one kept: it is actually an app store (browse and
           # install from Flathub), a different job than Warehouse did.
           - io.github.kolunmi.Bazaar
-          - org.bleachbit.BleachBit
           - com.github.qarmin.czkawka
-          - com.github.LongSoft.UEFITool
           # Media / docs / hardware
-          - io.github.mpc_qt.mpc-qt
-          - org.onlyoffice.desktopeditors
+          # mpc-qt -> Haruna: KDE-native player (real menu bar/toolbar,
+          # built for Plasma) rather than mpc-qt's minimal interface.
+          # Still mpv underneath, same playback engine/quality.
+          - org.kde.haruna
+          # OnlyOffice -> LibreOffice: OnlyOffice's desktop app is
+          # Chromium/Electron-based, the same category of overhead as
+          # VS Code — that's the actual source of the slowness/weight.
+          # LibreOffice is native, lighter at startup and idle. Trade-off:
+          # format fidelity on complex Word/Excel docs isn't always as
+          # exact as OnlyOffice's, which optimises specifically for that.
+          - org.libreoffice.LibreOffice
           - hu.irl.cameractrls
       - scope: user
 
