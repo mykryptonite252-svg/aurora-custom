@@ -6,7 +6,7 @@
   "BuiltInDnsClientEnabled": false,
   "DnsOverHttpsMode": "off",
   "MetricsReportingEnabled": false,
-  "SafeBrowsingProtectionLevel": 0,
+  "SafeBrowsingProtectionLevel": 1,
   "UrlKeyedAnonymizedDataCollectionEnabled": false,
   "SyncDisabled": true,
   "PasswordManagerEnabled": false,
@@ -34,7 +34,9 @@
   "BraveShieldsEnabledForUrls": [
     "*"
   ],
-  "BraveShieldsDefault": "aggressive",
+  "DefaultBraveAdblockSetting": 2,
+  "DefaultBraveFingerprintingV2Setting": 3,
+  "DefaultBraveHttpsUpgradeSetting": 3,
   "ExtensionInstallForcelist": [
     "eiaeiblijfjekdanodkjadfinkhbfgcd;https://clients2.google.com/service/update2/crx",
     "mdjildafknihdffpkfmmpnpoiajfjnjd;https://clients2.google.com/service/update2/crx",
