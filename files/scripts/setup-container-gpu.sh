@@ -25,3 +25,9 @@ systemctl enable cpu-hwp-boost.service
 # power-profiles-daemon must stay disabled: it conflicts with tuned, and
 # enabling it was a known breakage in the previous image attempt.
 systemctl enable thermald.service || true
+
+# HDMI link-retrain workaround (user-level unit) — enabled for every user via
+# --global rather than a per-session `systemctl --user enable`, since there is
+# no logged-in user at build time.
+systemctl --global enable hdmi-link-retrain.service || \
+  echo "NOTE: could not globally enable hdmi-link-retrain.service at build time"

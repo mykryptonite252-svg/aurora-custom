@@ -1,0 +1,20 @@
+[Unit]
+Description=Force a DPMS cycle to fix HDMI link retraining to a reduced bandwidth
+# Runs after the graphical session so kscreen/kwin are already up.
+After=plasma-kwin_wayland.service
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+# Found live on this hardware: the HDMI link between the NVIDIA GPU and the
+# external 4K display can silently retrain at a reduced link rate sometime
+# after boot, with no kernel log entry at all (checked — no hotplug, no
+# link-training failure, no suspend/resume). The practical effect: 4K caps
+# at ~30Hz instead of 60Hz, and HDR/Wide Color Gamut both drop to disabled.
+#
+# A DPMS off/on cycle forces a clean re-handshake at full bandwidth without
+# a physical unplug. Verified this recovers 3840x2160@60 + HDR + WCG.
+ExecStart=/usr/bin/sh -c 'sleep 5 && kscreen-doctor --dpms off && sleep 1 && kscreen-doctor --dpms on'
+
+[Install]
+WantedBy=graphical-session.target
