@@ -1,0 +1,23 @@
+# USB power policy
+#
+# usbcore.autosuspend defaults to 2 seconds on this system, meaning every USB
+# device is powered down 2s after going idle. That is what was producing
+#   uvcvideo: Failed to set UVC probe control : -32 (exp. 26)
+# on the MX Brio — it slept between uses and failed to renegotiate on wake.
+#
+# Per-device udev rules already exempt the Brio and the Logi Bolt receiver
+# (50-logitech-hardware.rules), but any device plugged in later inherits the
+# 2s default. -1 disables autosuspend globally: no USB device is ever
+# power-cycled, which is what makes ports behave predictably for cameras,
+# capture devices, audio interfaces and hubs.
+#
+# Trade-off, stated plainly: this costs some idle battery life, since USB
+# controllers and devices stay powered. On a machine that runs on AC and
+# values device reliability over runtime, that is the right side of the
+# trade. Remove this file to get the power saving back.
+#
+# NOT related to charging power: the Type-C port already reports
+# power_role=[source] at power_operation_mode=3.0A, which is the maximum
+# standard Type-C current source mode. That is firmware-controlled and is
+# not something the OS limits or can raise.
+kargs = ["usbcore.autosuspend=-1"]
