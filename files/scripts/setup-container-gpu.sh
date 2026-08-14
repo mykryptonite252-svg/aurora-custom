@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Rootless podman cannot open the NVIDIA device nodes unless this SELinux
-# boolean is set — nvidia-smi inside a container fails with
-# "Insufficient Permissions". Baked in so it survives every rebase.
-echo "Enabling container_use_devices SELinux boolean..."
-setsebool -P container_use_devices on || \
-  semanage boolean -m --on container_use_devices || \
-  echo "WARNING: could not set container_use_devices at build time"
+# GPU access for containers.
+#
+# Aurora already ships ublue-nvctk-cdi.service, which generates the NVIDIA CDI
+# spec with correct ordering against the driver load. Shipping a second service
+# to do the same job would be duplication with a worse dependency graph, so we
+# just enable theirs rather than replacing it.
+systemctl enable ublue-nvctk-cdi.service || \
+  echo "NOTE: ublue-nvctk-cdi.service not present in this base"
 
-# Generate the CDI spec on every boot
-systemctl enable nvidia-cdi-generate.service
+# Keeps the Flatpak NVIDIA runtime in step with the host driver. Without it,
+# GPU-using Flatpaks (Zoom, browsers) break after a driver bump.
+systemctl enable ublue-nvidia-flatpak-runtime-sync.service || \
+  echo "NOTE: ublue-nvidia-flatpak-runtime-sync.service not present"
 
-# HWP dynamic boost. EPP is left to tuned — see cpu-hwp-boost.service.
+# SELinux boolean, applied on first boot (see the unit for why not here).
+systemctl enable selinux-container-gpu.service
+
+# HWP dynamic boost. EPP is deliberately left to tuned — see the unit.
 systemctl enable cpu-hwp-boost.service
 
-# Thermal + power management: thermald is Intel's thermal daemon and is the
-# correct choice on this silicon. tuned handles the rest. power-profiles-daemon
-# conflicts with tuned and must stay disabled - enabling it was a known
-# breakage in the previous image attempt.
+# thermald is Intel's thermal daemon and the correct choice on this silicon.
+# power-profiles-daemon must stay disabled: it conflicts with tuned, and
+# enabling it was a known breakage in the previous image attempt.
 systemctl enable thermald.service || true

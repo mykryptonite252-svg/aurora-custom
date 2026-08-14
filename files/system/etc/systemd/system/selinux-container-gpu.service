@@ -1,0 +1,21 @@
+[Unit]
+Description=Allow containers to access GPU devices (SELinux boolean)
+After=local-fs.target
+ConditionPathExists=/usr/sbin/setsebool
+# Only runs until it succeeds once; the boolean is persistent thereafter.
+ConditionPathExists=!/var/lib/.selinux-container-gpu-done
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Must run on the real system, NOT at image build time: `setsebool -P` writes
+# to the SELinux policy store, and there is no running SELinux inside an OCI
+# build container, so doing this during the build silently no-ops.
+#
+# Without this, rootless podman cannot open the NVIDIA device nodes and
+# nvidia-smi inside a container fails with "Insufficient Permissions".
+ExecStart=/usr/sbin/setsebool -P container_use_devices on
+ExecStartPost=/usr/bin/touch /var/lib/.selinux-container-gpu-done
+
+[Install]
+WantedBy=multi-user.target
