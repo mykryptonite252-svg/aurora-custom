@@ -190,14 +190,18 @@ modules:
         scope: system
         install:
           # Browsers
-          - com.brave.Browser
+          # Brave and Firefox deliberately NOT shipped — being reinstalled
+          # fresh by choice. Chrome kept as a day-one fallback so the image
+          # isn't browserless before Bazaar is used to add anything else.
           - com.google.Chrome
-          - org.mozilla.firefox
           # Security / privacy
-          - org.keepassxc.KeePassXC
+          # KeePassXC -> Keyguard: KeePassXC's vault (a single .kdbx binary
+          # blob) had repeated corruption. Keyguard stores each entry
+          # separately and is designed to run fully local with no account
+          # required, unlike Bitwarden which nudges toward one.
+          - com.artemchep.keyguard
           - org.cryptomator.Cryptomator
           - io.ente.auth
-          - org.gnome.World.Secrets
           - com.github.tchx84.Flatseal
           # Comms
           - us.zoom.Zoom
@@ -208,7 +212,11 @@ modules:
           - io.missioncenter.MissionCenter
           - io.podman_desktop.PodmanDesktop
           - com.ranfdev.DistroShelf
-          - io.github.flattool.Warehouse
+          # Warehouse dropped — it manages already-installed Flatpaks
+          # (permissions, cleanup), which Flatseal already covers for
+          # permissions and `flatpak uninstall --unused` covers for cleanup.
+          # Bazaar is the one kept: it is actually an app store (browse and
+          # install from Flathub), a different job than Warehouse did.
           - io.github.kolunmi.Bazaar
           - org.bleachbit.BleachBit
           - com.github.qarmin.czkawka
