@@ -61,6 +61,9 @@ modules:
         - v4l-utils           # webcam controls (v4l2-ctl)
         - gnome-disk-utility
         - glibc-langpack-en
+        - gparted             # partition editor — needs direct disk access,
+                               # so native rather than Flatpak
+        - android-tools       # adb + fastboot
 
   # ── Removals, split into labelled groups ────────────────────────────
   # Deliberately separate modules: a single 87-package transaction failed
