@@ -11,13 +11,19 @@
 # The install ORDER below is the whole point: Firefox reads exactly ONE
 # policies.json with no managed-directory merge (unlike Chromium), so this
 # must overwrite whatever the phoenix package places at that path. Chaining
-# it into the same RUN after rpm-ostree guarantees that, where the generic
+# it into the same RUN after the install guarantees that, where the generic
 # `files` module could not — that module runs first, before any package
 # install, and phoenix would clobber it.
+#
+# NOTE ON `dnf5` vs `rpm-ostree install`: the build container is a plain OCI
+# container being assembled, not a booted ostree deployment — `rpm-ostree
+# install` failed with "This system was not booted via libostree." Every
+# other package op in this recipe already goes through plain dnf5 for the
+# same reason (see files/scripts/remove-samba.sh and remove-legacy.sh).
 
-RUN dnf copr enable -y celenity/copr && \
-    dnf makecache && \
-    rpm-ostree install firefox phoenix && \
+RUN dnf5 -y copr enable celenity/copr && \
+    dnf5 makecache && \
+    dnf5 install -y firefox phoenix && \
     install -Dm644 /usr/share/aurora-custom/firefox-policies.json \
       /etc/firefox/policies/policies.json
 

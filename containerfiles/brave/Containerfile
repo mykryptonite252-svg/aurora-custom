@@ -11,11 +11,19 @@
 # instead staged into the image by the `files` module (module 1) at
 # /usr/share/aurora-custom/ and installed from there below, which also
 # guarantees it lands AFTER the package install rather than before it.
+#
+# NOTE ON `rpm-ostree install` vs `dnf5 install`: the build container is a
+# plain OCI container being assembled, not a booted ostree deployment —
+# `rpm-ostree install` failed outright with "This system was not booted via
+# libostree." Every other package op in this recipe already goes through
+# plain dnf5 for the same reason (see files/scripts/remove-samba.sh and
+# remove-legacy.sh); this should have followed that precedent from the
+# start instead of using rpm-ostree here.
 
 RUN rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc && \
     curl -fsSLo /etc/yum.repos.d/brave-browser.repo \
       https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo && \
-    rpm-ostree install brave-browser && \
+    dnf5 install -y brave-browser && \
     install -Dm644 /usr/share/aurora-custom/brave-policies.json \
       /etc/brave/policies/managed/policies.json
 
