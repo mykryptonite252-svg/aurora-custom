@@ -3,16 +3,29 @@
 #
 # Custom Aurora image — KDE, NVIDIA-open, hardened, dev tooling.
 #
-# Built from an audit of the live system, so it reproduces what already works.
-# Everything applied by hand over recent weeks is baked in here rather than
-# left as drift on top of the base.
+# Built from an audit of the live machine, so it reproduces what already works
+# rather than guessing. Everything applied by hand over recent weeks is baked
+# in here instead of accumulating as drift on top of the base.
 #
-# Base choice: aurora-dx-nvidia-open, deliberately NOT secureblue.
-# The previous attempt used secureblue-hardened, and three of its four commits
+# BASE CHOICE: aurora-dx-nvidia-open, deliberately NOT secureblue.
+# The previous attempt used secureblue-hardened and three of its four commits
 # were undoing damage it caused — it masks bluetooth.service, cups.service and
-# avahi-daemon.service outright and conflicts with power-profiles-daemon.
-# The hardening that actually matters is portable and is applied below; the
-# parts that broke a working desktop are not.
+# avahi-daemon.service outright and conflicts with power-profiles-daemon. The
+# hardening that matters is portable and is applied here; the parts that broke
+# a working desktop are not.
+#
+# CPU DECISIONS (deliberate, not oversights):
+#   * SMT / Hyper-Threading LEFT ENABLED. mds and mmio_stale_data report
+#     "SMT vulnerable" on this silicon; closing that needs nosmt, which drops
+#     12 threads to 6 for ~30-40% less multi-threaded throughput. Those attacks
+#     require an attacker already executing code locally.
+#   * ALL speculative-execution mitigations LEFT ENABLED. No mitigations=off.
+#   * EPP is left to tuned, which already sets balance_performance. The live
+#     system was found stuck on balance_power (balanced-battery's value) after
+#     an AC transition — a stale-state bug. 60-tuned-ac-reapply.rules
+#     re-asserts the profile rather than fighting tuned from a second service.
+#   * hwp_dynamic_boost IS set (cpu-hwp-boost.service) — no tuned profile
+#     manages it and it was found disabled.
 
 name: aurora-custom
 description: Aurora KDE + NVIDIA-open, hardened, with dev and container tooling
@@ -20,34 +33,14 @@ description: Aurora KDE + NVIDIA-open, hardened, with dev and container tooling
 base-image: ghcr.io/ublue-os/aurora-dx-nvidia-open
 image-version: stable
 
-# CPU DECISIONS (recorded deliberately, not oversights):
-#
-#   * SMT / Hyper-Threading: LEFT ENABLED. The mds and mmio_stale_data
-#     mitigations report "SMT vulnerable" on this silicon. Closing that fully
-#     requires nosmt, which drops 12 threads to 6 for roughly 30-40% less
-#     multi-threaded throughput. Those attacks require an attacker already
-#     executing code locally, so the trade was judged not worth it.
-#
-#   * Speculative-execution mitigations: ALL LEFT ENABLED. No mitigations=off,
-#     no per-flag disabling. This is the single most common "performance tip"
-#     and it is a bad trade here.
-#
-#   * EPP is left to tuned, which already sets balance_performance in its
-#     "balanced" profile. The live system was found stuck on balance_power
-#     (balanced-battery's value) after an AC transition — a stale-state bug,
-#     not a misconfiguration. 60-tuned-ac-reapply.rules re-asserts the profile
-#     on power-supply changes rather than fighting tuned from a second service.
-#
-#   * hwp_dynamic_boost IS set (cpu-hwp-boost.service) — no tuned profile on
-#     this system manages it and it was found disabled.
-
 modules:
-  # Drop in sysctl hardening, the CDI GPU service and Brave flags.
+  # Sysctl hardening, kargs, udev rules, systemd units, VAAPI/KWin env.
   - type: files
     files:
       - source: system
         destination: /
 
+  # ── Installs ────────────────────────────────────────────────────────
   - type: dnf
     repos:
       files:
@@ -56,21 +49,28 @@ modules:
       packages:
         - code                # VS Code — was layered on the live system
         - clamav
-        - clamtk        # GUI frontend for ClamAV
+        - clamtk              # GUI frontend for ClamAV
         - clamd
         - clamav-freshclam
-        - rasdaemon      # ECC / hardware error reporting
+        - rasdaemon           # ECC / hardware error reporting
         - nvtop
         - iotop
         # Previously layered on the live system — folded in so they survive
-        # the rebase instead of having to be re-layered every time.
-        - vorta               # Borg backup GUI — was layered
-        - v4l-utils           # webcam controls (v4l2-ctl) — was layered
-        - gnome-disk-utility  # was layered
-        - glibc-langpack-en   # was layered
+        # a rebase instead of being silently re-layered every time.
+        - vorta               # Borg backup GUI
+        - v4l-utils           # webcam controls (v4l2-ctl)
+        - gnome-disk-utility
+        - glibc-langpack-en
+
+  # ── Removals, split into labelled groups ────────────────────────────
+  # Deliberately separate modules: a single 87-package transaction failed
+  # with a bare "Rpm transaction failed" and no indication of the culprit.
+  # Grouping means the next failure names the group it happened in.
+
+  # Input methods — system is en_US only.
+  - type: dnf
     remove:
       packages:
-        # ── Input methods / i18n (system is en_US only) ──────────────
         - anthy-unicode
         - fcitx5
         - fcitx5-chewing
@@ -91,9 +91,13 @@ modules:
         - fcitx5-qt5
         - fcitx5-qt6
         - fcitx5-qt-libfcitx5qt6widgets
-        # ── Printing & scanning (removed entirely, by choice) ─────────
-        # Printing will not work until something is reinstalled. This is
-        # deliberate: no printer is attached to this machine.
+
+  # Printing and scanning — removed entirely by choice. No printer is
+  # attached; printing will not work until something is reinstalled.
+  # NOTE: cups itself is NOT removed, only drivers and frontends.
+  - type: dnf
+    remove:
+      packages:
         - bluez-cups
         - braille-printer-app
         - c2esp
@@ -113,27 +117,22 @@ modules:
         - sane-backends-drivers-cameras
         - sane-backends-drivers-scanners
         - splix
-        # ── Accessibility ─────────────────────────────────────────────
-        # brltty is removed for a second reason beyond being unused: it
-        # claims USB serial adapters on hotplug and breaks them, which
-        # matters on a machine used for serial console work on routers.
+
+  # Accessibility. brltty is removed for a second reason beyond being
+  # unused: it claims USB serial adapters on hotplug and breaks them,
+  # which matters on a machine used for serial console work on routers.
+  - type: dnf
+    remove:
+      packages:
         - brlapi
         - brltty
         - orca
         - python3-brlapi
-        # ── Legacy wireless firmware (hardware not present) ───────────
-        - b43-fwcutter
-        - b43-openfwwf
-        # ── Network filesystems (not used) ────────────────────────────
-        - autofs
-        - davfs2
-        - cifs-utils
-        - cifs-utils-info
-        - nfs-utils
-        # ── Legacy document converters ────────────────────────────────
-        - antiword
-        - catdoc
-        # ── Samba / SMB (server side too — closes LAN file sharing) ───
+
+  # Samba — the SERVER side, which can share local files on the LAN.
+  - type: dnf
+    remove:
+      packages:
         - samba
         - samba-client
         - samba-client-libs
@@ -149,35 +148,57 @@ modules:
         - samba-winbind-clients
         - samba-winbind-modules
         - kdenetwork-filesharing
-        # ── Network discovery (broadcasts this host, enumerates others) ─
-        # Avahi was already denied to Brave over D-Bus by an earlier
-        # hardening pass; removing the package entirely is the stronger
-        # version of the same decision.
+
+  # Network discovery, geolocation, online accounts. Avahi broadcasts this
+  # host on the LAN and enumerates others; it and geoclue were already
+  # denied to Brave over D-Bus, so removing the packages is the stronger
+  # form of a decision already taken.
+  - type: dnf
+    remove:
+      packages:
         - avahi
         - avahi-glib
         - avahi-gobject
         - avahi-libs
         - avahi-tools
         - kdsoap-ws-discovery-client
-        # ── Geolocation (also already denied over D-Bus) ──────────────
         - geoclue2
-        # ── Online account sign-in (Google/Nextcloud/etc) ─────────────
         - kaccounts-integration-qt6
         - kaccounts-providers
-        # ── File content indexer ──────────────────────────────────────
-        # Baloo indexes the content of every file it can read. Removed for
-        # both privacy and background I/O. Cost: no KDE file-content
-        # search — use locate/find or per-app search instead.
+
+  # Baloo indexes the content of every readable file. Removed for privacy
+  # and to stop the background I/O. Accepted cost: no KDE file search.
+  - type: dnf
+    remove:
+      packages:
         - kf6-baloo
         - kf6-baloo-file
         - kf6-baloo-libs
         - baloo-widgets
-        # ── Dead weight ───────────────────────────────────────────────
+
+  # Legacy hardware support, network filesystems, dead weight.
+  - type: dnf
+    remove:
+      packages:
+        - b43-fwcutter
+        - b43-openfwwf
+        - autofs
+        - davfs2
+        - cifs-utils
+        - cifs-utils-info
+        - nfs-utils
+        - antiword
+        - catdoc
         - plasma-desktop-doc
         - kdegraphics-mobipocket
         - plasma-workspace-wallpapers
 
+  # ── Service enablement ──────────────────────────────────────────────
+  - type: script
+    scripts:
+      - setup-container-gpu.sh
 
+  # ── Flatpaks ────────────────────────────────────────────────────────
   - type: default-flatpaks
     configurations:
       - notify: true
