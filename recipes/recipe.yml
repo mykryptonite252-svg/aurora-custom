@@ -130,24 +130,15 @@ modules:
         - python3-brlapi
 
   # Samba — the SERVER side, which can share local files on the LAN.
-  - type: dnf
-    remove:
-      packages:
-        - samba
-        - samba-client
-        - samba-client-libs
-        - samba-common
-        - samba-common-tools
-        - samba-core-libs
-        - samba-dcerpc
-        - samba-ldb-ldap-modules
-        - samba-libs
-        - samba-ndr-libs
-        - samba-usershares
-        - samba-winbind
-        - samba-winbind-clients
-        - samba-winbind-modules
-        - kdenetwork-filesharing
+  #
+  # Removed via a script, not the dnf module: samba-client's %postun
+  # scriptlet exits 2 in the build container (RPM calls it "non-critical"
+  # but the transaction aborts regardless), and the dnf module's `remove:`
+  # only accepts `packages` and `auto-remove` — no way to skip scriptlets.
+  # See files/scripts/remove-samba.sh for the full explanation.
+  - type: script
+    scripts:
+      - remove-samba.sh
 
   # Network discovery, geolocation, online accounts. Avahi broadcasts this
   # host on the LAN and enumerates others; it and geoclue were already
