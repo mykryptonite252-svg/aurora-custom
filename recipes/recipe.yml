@@ -70,33 +70,70 @@ modules:
         - glibc-langpack-en   # was layered
     remove:
       packages:
-        # Input methods for languages not in use (system is en_US only)
+        # ── Input methods / i18n (system is en_US only) ──────────────
         - anthy-unicode
         - fcitx5
         - fcitx5-chewing
         - fcitx5-chinese-addons
-        # Firmware for wireless hardware not present in this machine
-        - b43-fwcutter
-        - b43-openfwwf
-        # Legacy document converters
-        - antiword
-        - catdoc
-        # Network filesystems not in use
-        - autofs
-        - davfs2
-        # Printer drivers for hardware not present
+        - fcitx5-chinese-addons-data
+        - fcitx5-configtool
+        - fcitx5-data
+        - fcitx5-gtk
+        - fcitx5-gtk3
+        - fcitx5-gtk4
+        - fcitx5-hangul
+        - fcitx5-libs
+        - fcitx5-libthai
+        - fcitx5-lua
+        - fcitx5-m17n
+        - fcitx5-mozc
+        - fcitx5-qt
+        - fcitx5-qt5
+        - fcitx5-qt6
+        - fcitx5-qt-libfcitx5qt6widgets
+        # ── Printing & scanning (removed entirely, by choice) ─────────
+        # Printing will not work until something is reinstalled. This is
+        # deliberate: no printer is attached to this machine.
+        - bluez-cups
+        - braille-printer-app
         - c2esp
         - dymo-cups-drivers
-        #
-        # NOTE: printing (cups), bluetooth and accessibility are deliberately
-        # NOT removed. Stripping those is what made the previous image painful.
+        - gutenprint
+        - gutenprint-cups
+        - hplip
+        - hplip-common
+        - hplip-libs
+        - libsane-hpaio
+        - plasma-print-manager
+        - plasma-print-manager-libs
+        - printer-driver-brlaser
+        - ptouch-driver
+        - sane-airscan
+        - sane-backends
+        - sane-backends-drivers-cameras
+        - sane-backends-drivers-scanners
+        - splix
+        # ── Accessibility ─────────────────────────────────────────────
+        # brltty is removed for a second reason beyond being unused: it
+        # claims USB serial adapters on hotplug and breaks them, which
+        # matters on a machine used for serial console work on routers.
+        - brlapi
+        - brltty
+        - orca
+        - python3-brlapi
+        # ── Legacy wireless firmware (hardware not present) ───────────
+        - b43-fwcutter
+        - b43-openfwwf
+        # ── Network filesystems (not used) ────────────────────────────
+        - autofs
+        - davfs2
+        - cifs-utils
+        - cifs-utils-info
+        - nfs-utils
+        # ── Legacy document converters ────────────────────────────────
+        - antiword
+        - catdoc
 
-  # Allow rootless containers to reach the NVIDIA device nodes. Without this
-  # SELinux boolean, nvidia-smi inside a container fails with
-  # "Insufficient Permissions" — hit exactly this while setting up Ollama.
-  - type: script
-    scripts:
-      - setup-container-gpu.sh
 
   - type: default-flatpaks
     configurations:
