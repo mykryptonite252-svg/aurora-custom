@@ -184,7 +184,7 @@ modules:
       - setup-container-gpu.sh
 
   # ── Native browsers ──────────────────────────────────────────────────
-  # Brave and Firefox layered as native rpm-ostree packages, not Flatpaks.
+  # Brave and Firefox layered as native dnf5-installed packages, not Flatpaks.
   # Chromium-family browsers have documented WebRTC hardware video ENCODE
   # degradation under Flatpak's sandbox; Phoenix's own support table marks
   # Flatpak Firefox as broken outright. Hardware-accelerated video calls
