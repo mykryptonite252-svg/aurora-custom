@@ -1,0 +1,30 @@
+[Unit]
+Description=Enable Intel HWP dynamic boost
+After=multi-user.target tuned.service
+Wants=multi-user.target
+ConditionPathExists=/sys/devices/system/cpu/intel_pstate/hwp_dynamic_boost
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# ---------------------------------------------------------------------------
+# This service deliberately sets ONE thing.
+#
+# EPP is NOT set here. tuned owns it: the "balanced" profile already specifies
+#   energy_performance_preference=balance_performance
+#   energy_perf_bias=normal
+#   boost=1
+# Setting EPP from a second place would mean two things fighting over the same
+# lever, with the winner decided by boot ordering. tuned is the right owner.
+#
+# hwp_dynamic_boost is different - no tuned profile on this system touches it,
+# and it was found sitting at 0 (off). When enabled, the CPU briefly boosts a
+# core that suddenly becomes busy after idling, then settles back. It targets
+# the interactive bursty case, and because the boost is transient it does not
+# raise sustained package power the way forcing the performance EPP would.
+# ---------------------------------------------------------------------------
+ExecStart=/usr/bin/bash -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/hwp_dynamic_boost'
+
+[Install]
+WantedBy=multi-user.target

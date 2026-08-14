@@ -1,0 +1,6 @@
+# On this machine tuned was found reporting profile "balanced" while the CPU
+# still carried balanced-battery's EPP (balance_power) — the profile name
+# reverted on AC plug-in but the cpu plugin values were never re-applied.
+# Re-asserting the active profile on any power-supply transition fixes it.
+ACTION=="change", SUBSYSTEM=="power_supply", \
+  RUN+="/usr/bin/systemctl try-restart tuned.service"

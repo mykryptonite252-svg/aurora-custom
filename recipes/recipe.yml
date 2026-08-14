@@ -1,45 +1,136 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
-# image will be published to ghcr.io/<user>/<name>
-name: template
-# description will be included in the image's metadata
-description: This is my personal OS image.
+#
+# Custom Aurora image — KDE, NVIDIA-open, hardened, dev tooling.
+#
+# Built from an audit of the live system, so it reproduces what already works.
+# Everything applied by hand over recent weeks is baked in here rather than
+# left as drift on top of the base.
+#
+# Base choice: aurora-dx-nvidia-open, deliberately NOT secureblue.
+# The previous attempt used secureblue-hardened, and three of its four commits
+# were undoing damage it caused — it masks bluetooth.service, cups.service and
+# avahi-daemon.service outright and conflicts with power-profiles-daemon.
+# The hardening that actually matters is portable and is applied below; the
+# parts that broke a working desktop are not.
 
-# the base image to build on top of (FROM) and the version tag to use
-base-image: ghcr.io/ublue-os/silverblue-main
-image-version: latest # You can pin to a specific version of Fedora as well
+name: aurora-custom
+description: Aurora KDE + NVIDIA-open, hardened, with dev and container tooling
 
-# module configuration, executed in order
-# you can include multiple instances of the same module
+base-image: ghcr.io/ublue-os/aurora-dx-nvidia-open
+image-version: stable
+
+# CPU DECISIONS (recorded deliberately, not oversights):
+#
+#   * SMT / Hyper-Threading: LEFT ENABLED. The mds and mmio_stale_data
+#     mitigations report "SMT vulnerable" on this silicon. Closing that fully
+#     requires nosmt, which drops 12 threads to 6 for roughly 30-40% less
+#     multi-threaded throughput. Those attacks require an attacker already
+#     executing code locally, so the trade was judged not worth it.
+#
+#   * Speculative-execution mitigations: ALL LEFT ENABLED. No mitigations=off,
+#     no per-flag disabling. This is the single most common "performance tip"
+#     and it is a bad trade here.
+#
+#   * EPP is left to tuned, which already sets balance_performance in its
+#     "balanced" profile. The live system was found stuck on balance_power
+#     (balanced-battery's value) after an AC transition — a stale-state bug,
+#     not a misconfiguration. 60-tuned-ac-reapply.rules re-asserts the profile
+#     on power-supply changes rather than fighting tuned from a second service.
+#
+#   * hwp_dynamic_boost IS set (cpu-hwp-boost.service) — no tuned profile on
+#     this system manages it and it was found disabled.
+
 modules:
+  # Drop in sysctl hardening, the CDI GPU service and Brave flags.
   - type: files
     files:
       - source: system
-        destination: / # copies files/system/* (* means everything inside it) into your image's root folder /
+        destination: /
 
   - type: dnf
     repos:
-      copr:
-        - atim/starship
+      files:
+        - https://packages.microsoft.com/yumrepos/vscode/config.repo
     install:
       packages:
-        - micro
-        - starship
+        - code                # VS Code — was layered on the live system
+        - clamav
+        - clamtk        # GUI frontend for ClamAV
+        - clamd
+        - clamav-freshclam
+        - rasdaemon      # ECC / hardware error reporting
+        - nvtop
+        - iotop
+        # Previously layered on the live system — folded in so they survive
+        # the rebase instead of having to be re-layered every time.
+        - vorta               # Borg backup GUI — was layered
+        - v4l-utils           # webcam controls (v4l2-ctl) — was layered
+        - gnome-disk-utility  # was layered
+        - glibc-langpack-en   # was layered
     remove:
       packages:
-        # example: removing firefox (in favor of the flatpak)
-        # "firefox" is the main package, "firefox-langpacks" is a dependency
-        - firefox
-        - firefox-langpacks # also remove firefox dependency (not required for all packages, this is a special case)
+        # Input methods for languages not in use (system is en_US only)
+        - anthy-unicode
+        - fcitx5
+        - fcitx5-chewing
+        - fcitx5-chinese-addons
+        # Firmware for wireless hardware not present in this machine
+        - b43-fwcutter
+        - b43-openfwwf
+        # Legacy document converters
+        - antiword
+        - catdoc
+        # Network filesystems not in use
+        - autofs
+        - davfs2
+        # Printer drivers for hardware not present
+        - c2esp
+        - dymo-cups-drivers
+        #
+        # NOTE: printing (cups), bluetooth and accessibility are deliberately
+        # NOT removed. Stripping those is what made the previous image painful.
+
+  # Allow rootless containers to reach the NVIDIA device nodes. Without this
+  # SELinux boolean, nvidia-smi inside a container fails with
+  # "Insufficient Permissions" — hit exactly this while setting up Ollama.
+  - type: script
+    scripts:
+      - setup-container-gpu.sh
 
   - type: default-flatpaks
     configurations:
-      - notify: true # Send notification after install/uninstall is finished (true/false)
+      - notify: true
         scope: system
-        # If no repo information is specified, Flathub will be used by default
-        install: # system flatpaks we want all users to have and not remove
+        install:
+          # Browsers
+          - com.brave.Browser
+          - com.google.Chrome
           - org.mozilla.firefox
-          - org.gnome.Loupe
-      - scope: user # Also add Flathub user repo, but no user packages
+          # Security / privacy
+          - org.keepassxc.KeePassXC
+          - org.cryptomator.Cryptomator
+          - io.ente.auth
+          - org.gnome.World.Secrets
+          - com.github.tchx84.Flatseal
+          # Comms
+          - us.zoom.Zoom
+          - com.discordapp.Discord
+          - com.tutanota.Tutanota
+          - it.belloworld.mercurygram
+          # System / utilities
+          - io.missioncenter.MissionCenter
+          - io.podman_desktop.PodmanDesktop
+          - com.ranfdev.DistroShelf
+          - io.github.flattool.Warehouse
+          - io.github.kolunmi.Bazaar
+          - org.bleachbit.BleachBit
+          - com.github.qarmin.czkawka
+          - com.github.LongSoft.UEFITool
+          # Media / docs / hardware
+          - io.github.mpc_qt.mpc-qt
+          - org.onlyoffice.desktopeditors
+          - hu.irl.cameractrls
+      - scope: user
 
-  - type: signing # this sets up the proper policy & signing files for signed images to work fully
+  - type: signing

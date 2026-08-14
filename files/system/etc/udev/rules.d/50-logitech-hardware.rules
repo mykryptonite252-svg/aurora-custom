@@ -1,0 +1,28 @@
+# Logitech MX Brio (046d:0944) and Logi Bolt receiver (046d:c548)
+#
+# Two problems this fixes on this machine:
+#
+# 1. USB autosuspend on the Brio causes the camera to power down between uses.
+#    On wake it fails to renegotiate, producing:
+#       uvcvideo: Failed to set UVC probe control : -32 (exp. 26)
+#    and a retry cycle that shows up as the camera "not working" until replug.
+#
+# 2. Enumeration order. The stale kmod-v4l2loopback layer (left over from an
+#    OBS install that is no longer present) used to claim /dev/video0, so apps
+#    grabbing "the first camera" got a dead virtual device. That package is not
+#    included in this image. The symlink below is belt-and-braces so the Brio
+#    has a stable name regardless of enumeration order: point apps at
+#    /dev/webcam.
+
+# Never autosuspend the webcam
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="046d", ATTR{idProduct}=="0944", \
+  TEST=="power/control", ATTR{power/control}="on"
+
+# Never autosuspend the Bolt receiver (causes mouse/keyboard input lag)
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="046d", ATTR{idProduct}=="c548", \
+  TEST=="power/control", ATTR{power/control}="on"
+
+# Stable symlink for the real capture device (the Brio exposes two video
+# nodes; only the one with capture capability is useful)
+SUBSYSTEM=="video4linux", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="0944", \
+  ATTR{index}=="0", SYMLINK+="webcam"
