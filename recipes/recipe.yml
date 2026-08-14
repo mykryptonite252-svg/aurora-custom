@@ -183,6 +183,18 @@ modules:
     scripts:
       - setup-container-gpu.sh
 
+  # ── Native browsers ──────────────────────────────────────────────────
+  # Brave and Firefox layered as native rpm-ostree packages, not Flatpaks.
+  # Chromium-family browsers have documented WebRTC hardware video ENCODE
+  # degradation under Flatpak's sandbox; Phoenix's own support table marks
+  # Flatpak Firefox as broken outright. Hardware-accelerated video calls
+  # are a hard requirement, so both ship native instead. Zero browsers in
+  # the Flatpak list above by the same reasoning.
+  - type: containerfile
+    containerfiles:
+      - brave
+      - firefox
+
   # ── Flatpaks ────────────────────────────────────────────────────────
   - type: default-flatpaks
     configurations:

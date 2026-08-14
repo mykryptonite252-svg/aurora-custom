@@ -1,0 +1,23 @@
+# Native Brave, layered via rpm-ostree — not Flatpak. Chromium-family
+# browsers have documented WebRTC hardware video ENCODE degradation under
+# Flatpak's sandbox, and hardware-accelerated video calls are a hard
+# requirement. Repo/key URLs verified live (HTTP 200) against Brave's own
+# S3-hosted RPM repo.
+
+RUN rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc && \
+    curl -fsSLo /etc/yum.repos.d/brave-browser.repo \
+      https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo && \
+    rpm-ostree install brave-browser
+
+# Managed policy — replaces what the Flatpak sandbox override used to deny
+# (GeoClue/Avahi/notifications) since a native install has no bwrap layer
+# to deny them at. Chromium merges every file under managed/, so this can
+# safely be its own file rather than needing to land last.
+COPY policies.json /etc/brave/policies/managed/policies.json
+
+# Verify after rebase + reboot:
+#   rpm -q brave-browser
+#   brave://policy -> confirm all policies loaded, no "Unknown policy" entries
+#   brave://extensions -> confirm all 4 force-installed extensions present
+#   brave://gpu -> confirm Video Encode/Decode both "Hardware accelerated"
+#     (needs ~/.config/brave-flags.conf applied per-user; not bakeable)

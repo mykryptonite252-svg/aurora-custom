@@ -1,0 +1,69 @@
+{
+  "DefaultGeolocationSetting": 2,
+  "DefaultNotificationsSetting": 2,
+  "DefaultSensorsSetting": 2,
+  "WebRtcIPHandlingPolicy": "default_public_interface_only",
+  "BuiltInDnsClientEnabled": false,
+  "DnsOverHttpsMode": "off",
+  "MetricsReportingEnabled": false,
+  "SafeBrowsingProtectionLevel": 0,
+  "UrlKeyedAnonymizedDataCollectionEnabled": false,
+  "SyncDisabled": true,
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "SigninAllowed": false,
+  "SearchSuggestEnabled": false,
+  "TranslateEnabled": false,
+  "NetworkPredictionOptions": 2,
+  "BackgroundModeEnabled": false,
+  "PaymentMethodQueryEnabled": false,
+  "SpellcheckEnabled": true,
+  "SpellcheckServiceEnabled": false,
+  "UserFeedbackAllowed": false,
+  "PromotionalTabsEnabled": false,
+  "WebRtcEventLogCollectionAllowed": false,
+  "HardwareAccelerationModeEnabled": true,
+  "AudioCaptureAllowed": true,
+  "VideoCaptureAllowed": true,
+  "BraveRewardsDisabled": true,
+  "BraveWalletDisabled": true,
+  "BraveVPNDisabled": true,
+  "BraveAIChatEnabled": false,
+  "TorDisabled": false,
+  "BraveShieldsEnabledForUrls": [
+    "*"
+  ],
+  "BraveShieldsDefault": "aggressive",
+  "ExtensionInstallForcelist": [
+    "eiaeiblijfjekdanodkjadfinkhbfgcd;https://clients2.google.com/service/update2/crx",
+    "mdjildafknihdffpkfmmpnpoiajfjnjd;https://clients2.google.com/service/update2/crx",
+    "pkehgijcmpdhfbdbbnkijodmdjhbjlgp;https://clients2.google.com/service/update2/crx",
+    "njdfdhgcmkocbgbhcioffdbicglldapd;https://clients2.google.com/service/update2/crx"
+  ],
+  "ExtensionSettings": {
+    "*": {
+      "installation_mode": "blocked"
+    },
+    "eiaeiblijfjekdanodkjadfinkhbfgcd": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx",
+      "toolbar_pin": "force_pinned"
+    },
+    "mdjildafknihdffpkfmmpnpoiajfjnjd": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx",
+      "toolbar_pin": "default_unpinned"
+    },
+    "pkehgijcmpdhfbdbbnkijodmdjhbjlgp": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx",
+      "toolbar_pin": "default_unpinned"
+    },
+    "njdfdhgcmkocbgbhcioffdbicglldapd": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx",
+      "toolbar_pin": "default_unpinned"
+    }
+  }
+}
