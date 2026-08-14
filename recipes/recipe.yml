@@ -168,21 +168,15 @@ modules:
         - baloo-widgets
 
   # Legacy hardware support, network filesystems, dead weight.
-  - type: dnf
-    remove:
-      packages:
-        - b43-fwcutter
-        - b43-openfwwf
-        - autofs
-        - davfs2
-        - cifs-utils
-        - cifs-utils-info
-        - nfs-utils
-        - antiword
-        - catdoc
-        - plasma-desktop-doc
-        - kdegraphics-mobipocket
-        - plasma-workspace-wallpapers
+  #
+  # Removed via script, not the dnf module: cifs-utils' %preun scriptlet
+  # fails the same way samba-client's did (references live-system rpm
+  # state that doesn't exist during a build). Converted the whole group
+  # rather than bisecting each package across a separate build cycle —
+  # see files/scripts/remove-legacy.sh.
+  - type: script
+    scripts:
+      - remove-legacy.sh
 
   # ── Service enablement ──────────────────────────────────────────────
   - type: script
