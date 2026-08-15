@@ -18,17 +18,20 @@ set -euo pipefail
 # stripped from an image during a build, not a live system being reconfigured,
 # so there is nothing for a postun cleanup hook (winbind state, alternatives,
 # etc.) to meaningfully act on.
+#
+# samba-client-libs, samba-common, samba-core-libs and samba-ndr-libs are
+# deliberately NOT in this list — each is an 83-89 package cascade to
+# plasma-desktop/plasma-workspace on its own (confirmed via
+# `dnf5 remove --assumeno <pkg>` dry-run against the base image), the same
+# fragility as avahi-libs (see recipe.yml). Everything below is confirmed
+# to remove cleanly with no cascade beyond itself.
 dnf5 -y --setopt=tsflags=noscripts remove \
   samba \
   samba-client \
-  samba-client-libs \
-  samba-common \
   samba-common-tools \
-  samba-core-libs \
   samba-dcerpc \
   samba-ldb-ldap-modules \
   samba-libs \
-  samba-ndr-libs \
   samba-usershares \
   samba-winbind \
   samba-winbind-clients \

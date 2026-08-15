@@ -124,10 +124,16 @@ modules:
   # Accessibility. brltty is removed for a second reason beyond being
   # unused: it claims USB serial adapters on hotplug and breaks them,
   # which matters on a machine used for serial console work on routers.
+  #
+  # brlapi is deliberately KEPT (unlike the other three): QEMU's braille
+  # device passthrough feature hard-depends on it, so removing brlapi
+  # cascades to libvirt-daemon-kvm and the entire qemu-system-* package set
+  # (confirmed via dry-run: 27 packages instead of 1). brltty, orca and
+  # python3-brlapi are each single-package, zero-cascade removals on their
+  # own — dry-run confirmed exactly 3 packages combined, nothing else.
   - type: dnf
     remove:
       packages:
-        - brlapi
         - brltty
         - orca
         - python3-brlapi
@@ -138,58 +144,75 @@ modules:
   # scriptlet exits 2 in the build container (RPM calls it "non-critical"
   # but the transaction aborts regardless), and the dnf module's `remove:`
   # only accepts `packages` and `auto-remove` — no way to skip scriptlets.
-  # See files/scripts/remove-samba.sh for the full explanation.
+  #
+  # samba-client-libs, samba-common and samba-core-libs/samba-ndr-libs are
+  # deliberately KEPT — each is an 83-89 package cascade on its own (dry-run
+  # confirmed), the same class of problem as avahi-libs above. The daemon,
+  # CLI client, winbind, dcerpc, ldap modules and the Dolphin "share this
+  # folder" integration are all still fully removed; only the shared
+  # libraries other things link against for optional SMB support stay.
+  # See files/scripts/remove-samba.sh for the exact list and the scriptlet
+  # explanation.
   - type: script
     scripts:
       - remove-samba.sh
 
-  # Network discovery, geolocation, online accounts. Avahi broadcasts this
-  # host on the LAN and enumerates others; it and geoclue were already
-  # denied to Brave over D-Bus, so removing the packages is the stronger
-  # form of a decision already taken.
+  # Network discovery, geolocation, online accounts.
   #
-  # kaccounts-integration-qt6 is deliberately NOT removed, unlike the
-  # provider plugins below: plasma-desktop and plasma-workspace both have a
-  # hard RPM Requires on it (libkaccounts6.so.2). Removing it forced dnf5 to
-  # cascade-remove the entire desktop as an unsatisfiable-dependency
-  # casualty, and autoremove then swept up everything that was only
-  # installed transitively through the desktop — 540 packages gone
-  # (confirmed via `rpm -qa` diff against the base image), including cups,
-  # qemu, flatpak, code, and the NVIDIA X11 driver itself. Caught this by
-  # actually booting the built image in a VM and finding no desktop, not by
-  # inspecting the recipe. kaccounts-providers (the actual per-service
-  # plugins: Google, Nextcloud, etc.) has no such reverse dependency and is
-  # confirmed safe to remove on its own — the integration framework sitting
-  # unused with no providers configured has no real privacy cost, since it
-  # does nothing until a user manually adds an account.
+  # IMPORTANT — do not add avahi/geoclue2/kdsoap-ws-discovery-client back to
+  # this removal list without re-running the dry-run checks below first.
+  # This whole area turned out to be far more fragile than the earlier
+  # kf6-baloo/kaccounts-integration-qt6 fix alone accounted for — that fix
+  # was necessary but not sufficient, and this same 540+-package desktop
+  # wipeout happened AGAIN on the next build even after it landed, because
+  # the real root cause was here, not there:
+  #
+  #   dnf5 remove --assumeno avahi-libs          -> 555 packages
+  #   dnf5 remove --assumeno avahi-glib          -> 344 packages
+  #   dnf5 remove --assumeno geoclue2            -> 10 (incl. plasma-desktop,
+  #                                                  plasma-workspace)
+  #   dnf5 remove --assumeno kdsoap-ws-discovery-client -> 8 (same two)
+  #   dnf5 remove --assumeno kaccounts-providers -> 2 (itself + kio-gdrive)
+  #
+  # avahi-libs and avahi-glib are shared libraries hundreds of unrelated
+  # packages link against for optional zeroconf support — removing the
+  # library, not just the daemon, breaks everything that merely links
+  # against it even when the daemon was never running. geoclue2 and
+  # kdsoap-ws-discovery-client turned out to be pulled in by
+  # xdg-desktop-portal-kde and kio-extras respectively, which plasma-desktop
+  # and plasma-workspace both require.
+  #
+  # Only kaccounts-providers is actually safe to remove here. Everything
+  # else achieves the same privacy outcome — no broadcasting, no discovery,
+  # no location lookups — by masking the actual services instead of
+  # removing packages (see setup-container-gpu.sh). kdsoap-ws-discovery-client
+  # has no service to mask; it's a passive library invoked only when
+  # Dolphin's user browses "Network" by hand, not a background broadcaster,
+  # so it's left installed and undisturbed.
   - type: dnf
     remove:
       packages:
-        - avahi
-        - avahi-glib
-        - avahi-gobject
-        - avahi-libs
-        - avahi-tools
-        - kdsoap-ws-discovery-client
-        - geoclue2
         - kaccounts-providers
 
   # Baloo indexes the content of every readable file. Originally removed
-  # for privacy and to stop the background I/O, but kf6-baloo is ALSO a
-  # hard Requires of plasma-desktop/plasma-workspace (same cascade as
-  # kaccounts-integration-qt6 above — this was the other half of the same
-  # 540-package blast radius). Keeping the packages installed and disabling
-  # indexing via config instead: see files/system for the balooctl-disable
-  # first-boot step. Same practical outcome (no indexing, no background
-  # I/O) without breaking the desktop.
+  # for privacy and to stop the background I/O, but kf6-baloo is a hard
+  # Requires of plasma-desktop/plasma-workspace — removing it cascades the
+  # same way the avahi group did above. Keeping the packages installed and
+  # disabling indexing via config instead: see baloo-disable.service. Same
+  # practical outcome (no indexing, no background I/O) without breaking the
+  # desktop.
 
   # Legacy hardware support, network filesystems, dead weight.
   #
   # Removed via script, not the dnf module: cifs-utils' %preun scriptlet
   # fails the same way samba-client's did (references live-system rpm
-  # state that doesn't exist during a build). Converted the whole group
-  # rather than bisecting each package across a separate build cycle —
-  # see files/scripts/remove-legacy.sh.
+  # state that doesn't exist during a build).
+  #
+  # kdegraphics-mobipocket is deliberately KEPT — dry-run showed it cascades
+  # to dolphin, kf6-baloo, and plasma-desktop/plasma-workspace (20 packages
+  # instead of 1), the same fragility class as everything else fixed in
+  # this pass. Every other package in this group is a confirmed
+  # zero-cascade single-package removal. See files/scripts/remove-legacy.sh.
   - type: script
     scripts:
       - remove-legacy.sh

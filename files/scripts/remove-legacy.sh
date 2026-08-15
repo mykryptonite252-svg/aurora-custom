@@ -12,6 +12,11 @@ set -euo pipefail
 # autofs, davfs2 and nfs-utils are the same network-filesystem family and
 # were removed here pre-emptively via the same noscripts path, rather than
 # discovering each one's scriptlet failure in a separate build cycle.
+#
+# kdegraphics-mobipocket is deliberately NOT in this list — dry-run showed
+# it cascades to dolphin, kf6-baloo and plasma-desktop/plasma-workspace (20
+# packages instead of 1), the same fragility as avahi-libs (see
+# recipe.yml). Everything below is confirmed zero-cascade on its own.
 dnf5 -y --setopt=tsflags=noscripts remove \
   b43-fwcutter \
   b43-openfwwf \
@@ -23,5 +28,4 @@ dnf5 -y --setopt=tsflags=noscripts remove \
   antiword \
   catdoc \
   plasma-desktop-doc \
-  kdegraphics-mobipocket \
   plasma-workspace-wallpapers

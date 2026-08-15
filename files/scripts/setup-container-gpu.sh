@@ -37,3 +37,14 @@ systemctl --global enable hdmi-link-retrain.service || \
 # caused when it was removed instead).
 systemctl --global enable baloo-disable.service || \
   echo "NOTE: could not globally enable baloo-disable.service at build time"
+
+# Stop avahi/geoclue broadcasting and discovery by masking the services,
+# not removing the packages — avahi-libs/avahi-glib and geoclue2 all turned
+# out to have hundreds-of-packages-deep reverse dependencies (see
+# recipe.yml's network-discovery section for the dry-run numbers). `mask`
+# is a plain symlink-to-/dev/null, a filesystem operation, so unlike
+# setsebool this is safe to do at build time rather than needing first-boot.
+systemctl mask avahi-daemon.service avahi-daemon.socket || \
+  echo "NOTE: could not mask avahi-daemon at build time"
+systemctl mask geoclue.service || \
+  echo "NOTE: could not mask geoclue.service at build time"
