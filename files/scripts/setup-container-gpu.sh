@@ -31,3 +31,9 @@ systemctl enable thermald.service || true
 # no logged-in user at build time.
 systemctl --global enable hdmi-link-retrain.service || \
   echo "NOTE: could not globally enable hdmi-link-retrain.service at build time"
+
+# Disable Baloo indexing without removing the packages (plasma-desktop hard-
+# requires kf6-baloo — see recipe.yml's Baloo section for the cascade this
+# caused when it was removed instead).
+systemctl --global enable baloo-disable.service || \
+  echo "NOTE: could not globally enable baloo-disable.service at build time"

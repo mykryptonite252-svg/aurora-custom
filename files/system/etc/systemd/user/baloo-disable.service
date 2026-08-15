@@ -1,0 +1,19 @@
+[Unit]
+Description=Disable Baloo file indexing
+# kf6-baloo etc. are kept installed (plasma-desktop/plasma-workspace have a
+# hard RPM Requires on kf6-baloo — removing it cascades the whole desktop
+# out, see recipe.yml). This achieves the actual goal — no background
+# indexing, no I/O — without breaking that dependency.
+#
+# `balooctl6 disable` itself writes Indexing-Enabled=false into
+# baloofilerc, so that file's existence is used as the one-time marker —
+# no separate marker file needed, and it stays a no-op if the user
+# re-enables indexing by hand later.
+ConditionPathExists=!%h/.config/baloofilerc
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/balooctl6 disable
+
+[Install]
+WantedBy=graphical-session.target

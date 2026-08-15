@@ -147,6 +147,21 @@ modules:
   # host on the LAN and enumerates others; it and geoclue were already
   # denied to Brave over D-Bus, so removing the packages is the stronger
   # form of a decision already taken.
+  #
+  # kaccounts-integration-qt6 is deliberately NOT removed, unlike the
+  # provider plugins below: plasma-desktop and plasma-workspace both have a
+  # hard RPM Requires on it (libkaccounts6.so.2). Removing it forced dnf5 to
+  # cascade-remove the entire desktop as an unsatisfiable-dependency
+  # casualty, and autoremove then swept up everything that was only
+  # installed transitively through the desktop — 540 packages gone
+  # (confirmed via `rpm -qa` diff against the base image), including cups,
+  # qemu, flatpak, code, and the NVIDIA X11 driver itself. Caught this by
+  # actually booting the built image in a VM and finding no desktop, not by
+  # inspecting the recipe. kaccounts-providers (the actual per-service
+  # plugins: Google, Nextcloud, etc.) has no such reverse dependency and is
+  # confirmed safe to remove on its own — the integration framework sitting
+  # unused with no providers configured has no real privacy cost, since it
+  # does nothing until a user manually adds an account.
   - type: dnf
     remove:
       packages:
@@ -157,18 +172,16 @@ modules:
         - avahi-tools
         - kdsoap-ws-discovery-client
         - geoclue2
-        - kaccounts-integration-qt6
         - kaccounts-providers
 
-  # Baloo indexes the content of every readable file. Removed for privacy
-  # and to stop the background I/O. Accepted cost: no KDE file search.
-  - type: dnf
-    remove:
-      packages:
-        - kf6-baloo
-        - kf6-baloo-file
-        - kf6-baloo-libs
-        - baloo-widgets
+  # Baloo indexes the content of every readable file. Originally removed
+  # for privacy and to stop the background I/O, but kf6-baloo is ALSO a
+  # hard Requires of plasma-desktop/plasma-workspace (same cascade as
+  # kaccounts-integration-qt6 above — this was the other half of the same
+  # 540-package blast radius). Keeping the packages installed and disabling
+  # indexing via config instead: see files/system for the balooctl-disable
+  # first-boot step. Same practical outcome (no indexing, no background
+  # I/O) without breaking the desktop.
 
   # Legacy hardware support, network filesystems, dead weight.
   #
